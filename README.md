@@ -21,7 +21,7 @@ The deployment path can be tweaked by defining both a repository and a deploymen
 
 # Notes
 
-- Strong influence by https://github.com/lkwdwrd/git-deploy
+- Some inspiration from https://github.com/lkwdwrd/git-deploy
 
 # Todo
 
