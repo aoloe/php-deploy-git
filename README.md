@@ -28,6 +28,7 @@ The deployment path can be tweaked by defining both a repository and a deploymen
 - implement the "secret"
 - if no curl is defined, use the php based curl
 - use a config file to replace the few variables.
+
         $config = array (
             'my_repo' => // name of the repository
                 'secret' => 'secret string',
@@ -36,4 +37,5 @@ The deployment path can be tweaked by defining both a repository and a deploymen
                 'deployment_base_path' => '' // path to be prefixed to the filename
                 'log_file' => 'log.txt' // list of the commits
         );
+
 - clean up the code structure and create a composer manifest.
