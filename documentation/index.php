@@ -10,6 +10,9 @@
         font-family: "Fira Sans", "Source Sans Pro", Helvetica, Arial, sans-serif;
         font-weight: 400;
     }
+    .documentation h1 {
+        color: #f80;
+    }
     .documentation h2 {
         color: #f80;
         font-size:1.125em;
