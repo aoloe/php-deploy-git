@@ -29,11 +29,14 @@ The deployment path can be tweaked by defining both a repository and a deploymen
 - if no curl is defined, use the php based curl
 - use a config file to replace the few variables.
         $config = array (
-            'my_repo' => // name of the repository
-                'secret' => 'secret string',
+            'my_repo' => // name as user/repository
+                'secret' => 'secret string', // hashed!
                 'branch' => 'master', // only commits to this branch will be retained
-                'repository_base_path' => '' // path to be removed from the filename
-                'deployment_base_path' => '' // path to be prefixed to the filename
-                'log_file' => 'log.txt' // list of the commits
+                'repository_base_path' => '', // path to be removed from the filename
+                'deployment_base_path' => '', // path to be prefixed to the filename
+                'log_file' => 'log.txt', // list of the commits
+                'ignore' => array
+                ),
         );
+  - it should probably be a class that is loaded by a local file that, then, passes some parameters
 - clean up the code structure and create a composer manifest.
