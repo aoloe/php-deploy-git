@@ -1,0 +1,41 @@
+{
+    "name": "aoloe/php-git-deploy",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url":  "git@github.com:aoloe/php-test.git"
+        },
+        {
+            "type": "vcs",
+            "url":  "git@github.com:aoloe/php-documentation.git"
+        }
+    ],
+    "type": "library",
+    "description": "simple tool listening to the github webhooks and keeping the files in sync with the github repository",
+    "keywords": [
+        "github",
+        "webhook"
+    ],
+    "homepage": "https://github.com/aoloe/php-git-deploy",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ale Rimoldi",
+            "email": "ale@ideale.ch",
+            "homepage": "http://ideale.ch",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "require-dev": {
+        "aoloe/php-test" : "dev-master",
+        "aoloe/php-documentation" : "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aoloe\\": "src"
+        }
+    }
+}

@@ -28,6 +28,7 @@ The deployment path can be tweaked by defining both a repository and a deploymen
 - implement the "secret"
 - if no curl is defined, use the php based curl
 - use a config file to replace the few variables.
+
         $config = array (
             'my_repo' => // name as user/repository
                 'secret' => 'secret string', // hashed!
@@ -39,4 +40,3 @@ The deployment path can be tweaked by defining both a repository and a deploymen
                 ),
         );
   - it should probably be a class that is loaded by a local file that, then, passes some parameters
-- clean up the code structure and create a composer manifest.
