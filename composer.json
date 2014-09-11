@@ -1,5 +1,5 @@
 {
-    "name": "aoloe/php-git-deploy",
+    "name": "aoloe/php-deploy-git",
     "repositories": [
         {
             "type": "vcs",
