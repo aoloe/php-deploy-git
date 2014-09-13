@@ -91,3 +91,35 @@ if (file_exists('test/content')) {
     rmdir('test/content');
 }
 $test->stop();
+
+$test->start('Rewrite URLs');
+$github = new Aoloe\Deploy\GitHub();
+$test->assert_identical('don\'t remove no base path', $test->call_method($github, 'get_file_in_github_basepath', 'htdocs/test2.md'), 'htdocs/test2.md');
+$github->set_github_base_path('htdocs');
+$test->assert_identical('remove base path', $test->call_method($github, 'get_file_in_github_basepath', 'htdocs/test2.md'), 'test2.md');
+$test->assert_identical('ignore file outside of base path', $test->call_method($github, 'get_file_in_github_basepath', 'content/test2.md'), null);
+
+$base_path = 'content/';
+$filename = 'test/test.md';
+if (file_exists($filename)) {
+    unlink($deploy_path.$filename);
+}
+$github = new Aoloe\Deploy\GitHub();
+$github->set_github_base_path($base_path);
+// $github->set_deployed_base_path($deploy_path);
+$request = array('payload' => json_encode(
+    array_merge(
+        $payload_base,
+        array ('commits' => array(array_merge($commit_base, array('added' => array($base_path.$filename)))))
+    )
+));
+$github->read($request);
+$github->synchronize();
+
+$test->assert_true('get content/test/test.md into test/test.md ', file_exists($filename));
+// echo("<pre>filename content:\n".print_r(file_get_contents($filename), 1)."</pre>");
+$test->assert_identical('check content of test/test.md ', file_get_contents($filename), "this is also a test...\n");
+if (file_exists($filename)) {
+    unlink($filename);
+}
+$test->stop();

@@ -66,7 +66,7 @@ class GitHub {
 
     public function synchronize() {
         foreach ($this->get_files_to_get() as $item) {
-            $url = $this->get_raw_url($this->get_user(), $this->get_repository(), $this->get_branch()).$item;
+            $url = $this->get_raw_url($this->get_user(), $this->get_repository(), $this->get_branch()).$this->github_base_path.$item;
             // echo('<pre>url: '.print_r($url, 1).'</pre>');
             $file_content = $this->get_url_content($url);
             // echo('<pre>file_content: '.print_r($file_content, 1).'</pre>');
@@ -117,7 +117,8 @@ class GitHub {
             // echo("<pre>commit:\n".print_r($commit, 1)."</pre>");
             foreach ($commit['added'] + $commit['modified'] as $file) {
                 // echo("<pre>file:\n".print_r($file, 1)."</pre>");
-                if ($file === $this->get_filename_sanitized($file)) {
+                $file = $this->get_file_in_github_basepath($file);
+                if (isset($file) && ($file === $this->get_filename_sanitized($file))) {
                     // echo("<pre>file:\n".print_r($file, 1)."</pre>");
                     $result[] = $file;
                 }
@@ -138,6 +139,18 @@ class GitHub {
         }
         return $result;
     }
+
+    private function get_file_in_github_basepath($filename) {
+        $result = null;
+        $base_path = trim($this->github_base_path, '/').'/';
+        if ($base_path == '/') {
+            $result = $filename;
+        } elseif ($base_path === substr($filename, 0, strlen($base_path))) {
+            $result = substr($filename, strlen($base_path));
+        }
+        return $result;
+    }
+
 
     private function write_log() {
         if (isset($log_file) && !empty($log_file)) {
