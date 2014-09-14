@@ -59,6 +59,7 @@ class GitHub {
      * @return string $file
      */
     public function get_log() {return json_encode($this->log);}
+    public function clear_log() {$this->log = array();}
     private $log = array();
 
     /** @param array $request If not set, $_REQUEST will be used */
@@ -105,7 +106,7 @@ class GitHub {
             $filename = $this->get_deploy_path($item);
             if (file_exists($filename)) {
                 unlink($filename);
-                $this->log[] = '- '.$path;
+                $this->log[] = '- '.$filename;
             }
         }
 

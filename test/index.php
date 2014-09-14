@@ -69,9 +69,13 @@ $github->read($request);
 $github->synchronize();
 $test->assert_true('got test2.md file ', file_exists($filename));
 $test->assert_identical('check test2.md content ', file_get_contents($filename), "# second test\n");
+$test->assert_identical('check add in log', $github->get_log(), '["+ content\/test2.md"]');
+$github->clear_log();
 $github->set_deployed_base_path('test');
 $github->synchronize();
 $test->assert_true('got test2.md file into deployed_base_path', file_exists('test/'.$filename));
+$test->assert_identical('check add in log', $github->get_log(), '["+ test\/content\/test2.md"]');
+$github->clear_log();
 $github->set_deployed_base_path();
 // echo("<pre>request:\n".print_r($request, 1)."</pre>");
 $request = array('payload' => json_encode(
@@ -83,6 +87,7 @@ $request = array('payload' => json_encode(
 $github->read($request);
 $github->synchronize();
 $test->assert_true('deleted test2.md file', !file_exists($filename));
+$test->assert_identical('check delete in log', $github->get_log(), '["- content\/test2.md"]');
 $github->set_deployed_base_path('test');
 $github->synchronize();
 $test->assert_true('delete test2.md file from deployed_base_path', !file_exists('test/'.$filename));
