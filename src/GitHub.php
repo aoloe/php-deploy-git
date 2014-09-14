@@ -10,31 +10,58 @@ namespace Aoloe\Deploy;
  *
  * TODO:
  * - implement the secret
- * - implemente the logging of the commits
- * - log all requests (or at least what should have been done **and** what has been done)
+ * - implement the logging of the commits (or return the action performed);
+ * - log all requests (or at least what should have been done **and** what has been done; or return the actions
+ *   performed, letting the caller a chance to log them)
  * - check if it's possible that a same file is in delete and modify
  *   (and then just delete it)
  * - add an optional check, if it can write the file that it needs (deploy target, log file)
- * - ignore the files that are under $github_ignore_path (or only consider one path)
+ * - ignore the files that are under any of $github_ignore_path.
  * - eventually, only delete a file if it's not in the git repository
- * - protect paths that are not on github from deletes (vendor/, cache/)
+ * - protect paths that are not on github from malicious deletes or updates (vendor/, cache/)
+ * - eventually implement an asyncronous mode: the request writes a list of tasks and tries to
+ *   run them. if it fails (time out?) it does not remove the tasks and a cron job could retry them, one task
+ *   after the other.
  */
 class GitHub {
 
     private $payload = null;
 
     private $github_ignore_path = array();
-    private $github_base_path = '';
-    /** @param string $path */
+
+    /**
+     * Set the base path from the Git repository: all changes to files that are not under this path
+     * are ignored. The path is removed from the deployment targets.
+     *
+     * If you set it to `content`, only the files under the `content/` directory will be considered and
+     * the file `content/test/test_file.md` will be deployed as `test/test_file.md`.
+     *
+     * @param string $path
+     */
     public function set_github_base_path($path = '') {$this->github_base_path = $path;}
-    private $deployed_base_path = '';
-    /** @param string $path */
+    private $github_base_path = '';
+
+    /**
+     * Set it to the path where the files are deployed (relative to the path of the file loading this class).
+     *
+     * @param string $path
+     */
     public function set_deployed_base_path($path = '') {$this->deployed_base_path = $path;}
-    private $log_file = null;
+    private $deployed_base_path = '';
+
     /** @param string $file */
     public function set_log_file($file) {$this->log_file = $file;}
+    private $log_file = null;
 
-    /** @param array $request */
+    /**
+     * List of the performed actions as a json string.
+     *
+     * @return string $file
+     */
+    public function get_log() {return json_encode($this->log);}
+    private $log = array();
+
+    /** @param array $request If not set, $_REQUEST will be used */
     public function read($request = null) {
         if (is_null($request)) {
             $request = $_REQUEST;
@@ -46,8 +73,6 @@ class GitHub {
             }
             // file_put_contents('latest', $request['payload']);
             $this->payload = json_decode($request['payload'], true);
-        } else {
-            // TODO: eventually, show the log
         }
     }
 
@@ -73,12 +98,14 @@ class GitHub {
             $path = $this->get_deploy_path($item);
             $this->ensure_file_writable($path);
             file_put_contents($path, $file_content);
+            $this->log[] = '+ '.$path;
         }
 
         foreach ($this->get_files_to_delete() as $item) {
             $filename = $this->get_deploy_path($item);
             if (file_exists($filename)) {
                 unlink($filename);
+                $this->log[] = '- '.$path;
             }
         }
 
