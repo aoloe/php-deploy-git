@@ -10,15 +10,12 @@ namespace Aoloe\Deploy;
  *
  * TODO:
  * - implement the secret
- * - implement the logging of the commits (or return the action performed);
- * - log all requests (or at least what should have been done **and** what has been done; or return the actions
- *   performed, letting the caller a chance to log them)
+ * - allow to also log all requests, even if discareded
  * - check if it's possible that a same file is in delete and modify
  *   (and then just delete it)
  * - add an optional check, if it can write the file that it needs (deploy target, log file)
  * - ignore the files that are under any of $github_ignore_path.
- * - eventually, only delete a file if it's not in the git repository
- * - protect paths that are not on github from malicious deletes or updates (vendor/, cache/)
+ * - protect paths that are (not) on github from malicious deletes or updates (vendor/, cache/)
  * - eventually implement an asyncronous mode: the request writes a list of tasks and tries to
  *   run them. if it fails (time out?) it does not remove the tasks and a cron job could retry them, one task
  *   after the other.
@@ -38,7 +35,7 @@ class GitHub {
      *
      * @param string $path
      */
-    public function set_github_base_path($path = '') {$this->github_base_path = $path;}
+    public function set_github_base_path($path = '') {$this->github_base_path = trim($path, '/').($path == '' ? '' : '/');}
     private $github_base_path = '';
 
     /**
@@ -46,8 +43,8 @@ class GitHub {
      *
      * @param string $path
      */
-    public function set_deployed_base_path($path = '') {$this->deployed_base_path = $path;}
-    private $deployed_base_path = '';
+    public function set_deploy_base_path($path = '') {$this->deploy_base_path = $path;}
+    private $deploy_base_path = '';
 
     /** @param string $file */
     public function set_log_file($file) {$this->log_file = $file;}
@@ -91,6 +88,10 @@ class GitHub {
     }
 
     public function synchronize() {
+        $this->log[] = date('Y-m-d');
+        foreach ($this->get_commit_message() as $item) {
+            $this->log[] = '> '.$item;
+        }
         foreach ($this->get_files_to_get() as $item) {
             $url = $this->get_raw_url($this->get_user(), $this->get_repository(), $this->get_branch()).$this->github_base_path.$item;
             // echo('<pre>url: '.print_r($url, 1).'</pre>');
@@ -104,6 +105,7 @@ class GitHub {
 
         foreach ($this->get_files_to_delete() as $item) {
             $filename = $this->get_deploy_path($item);
+            // $this->log[] = '>> '.$filename;
             if (file_exists($filename)) {
                 unlink($filename);
                 $this->log[] = '- '.$filename;
@@ -122,7 +124,7 @@ class GitHub {
     
     /** @return string */
     private function get_deploy_path($path) {
-        $result = (empty($this->deployed_base_path) ? '' : rtrim($this->deployed_base_path, '/').'/').$path;
+        $result = (empty($this->deploy_base_path) ? '' : rtrim($this->deploy_base_path, '/').'/').$path;
         // echo('<pre>result: '.print_r($result, 1).'</pre>');
         return $result;
     }
@@ -137,6 +139,13 @@ class GitHub {
 
     private function get_branch() {
         return array_key_exists('ref', $this->payload) ? current(array_slice(explode('/', $this->payload['ref']), 2, 1)) : '';
+    }
+
+    private function get_commit_message() {
+        $result = array();
+        foreach ($this->get_commits() as $commit) {
+            $result[] = $commmit['message'];
+        }
     }
 
     private function get_files_to_get() {
@@ -159,8 +168,8 @@ class GitHub {
         $result = array();
         foreach ($this->get_commits() as $commit) {
             foreach ($commit['removed'] as $file) {
-
-                if ($file === $this->get_filename_sanitized($file)) {
+                $file = $this->get_file_in_github_basepath($file);
+                if (isset($file) && ($file === $this->get_filename_sanitized($file))) {
                     $result[] = $file;
                 }
             }
@@ -170,11 +179,10 @@ class GitHub {
 
     private function get_file_in_github_basepath($filename) {
         $result = null;
-        $base_path = trim($this->github_base_path, '/').'/';
-        if ($base_path == '/') {
+        if ($this->github_base_path == '/') {
             $result = $filename;
-        } elseif ($base_path === substr($filename, 0, strlen($base_path))) {
-            $result = substr($filename, strlen($base_path));
+        } elseif ($this->github_base_path === substr($filename, 0, strlen($this->github_base_path))) {
+            $result = substr($filename, strlen($this->github_base_path));
         }
         return $result;
     }
@@ -231,6 +239,7 @@ class GitHub {
     private function get_url_content($url) {
         $result = '';
         // echo('<pre>url: '.print_r($url, 1).'</pre>');
+        // $this->log[] = '>> '.$url;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 0);
