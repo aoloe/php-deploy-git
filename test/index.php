@@ -1,10 +1,20 @@
 <?php
 
+/**
+ * being tested on ww.xox.ch/deploy/ [laptop]
+ */
+
 include('../vendor/autoload.php');
 include('../src/GitHub.php');
 
 $test = new Aoloe\Test();
 
+$configuration_minimal = array (
+    'username' => 'aoloe_test',
+    'repository' => 'repository_test',
+);
+
+/*
 $payload_base = array (
     'repository' => array (
         'full_name' => 'aoloe/htdocs-test',
@@ -22,12 +32,19 @@ $commit_base = array (
     'modified' => array(),
     'removed' => array(),
 );
+*/
 
 $test->start("Import the GitHub deploy source");
 $test->assert_identical('GitHub class loaded', class_exists('Aoloe\Deploy\GitHub'), true);
 $deploy = new Aoloe\Deploy\GitHub();
 $test->assert_identical('deploy object created', is_a($deploy, 'Aoloe\Deploy\GitHub'), true);
 $test->stop();
+
+$test->start("Read the pending queue");
+$deploy = new Aoloe\Deploy\GitHub();
+$test->assert_false("no file read if no queue file defined", $deploy->read_pending_queue());
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'queue_not_exists.json'));
+$test->assert_false("no file read if wrong queue file defined", $deploy->read_pending_queue());
 
 $test->start('Read the request\'s basic information');
 $github = new Aoloe\Deploy\GitHub();

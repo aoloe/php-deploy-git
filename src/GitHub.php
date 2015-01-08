@@ -7,8 +7,8 @@ namespace Aoloe\Deploy;
 class Github {
     private $configuration = null;
     private $configuration_default = array (
-        // 'username' : '',
-        // 'repository' : '',
+        // 'username' => '',
+        // 'repository' => '',
         'secret' => '', // password_hash('secret string');
         'branch' => 'master', // only commits to this branch will be retained
         /*
@@ -35,14 +35,17 @@ class Github {
         }
         if (is_null($this->configuration) || !array_key_exists('username', $this->configuration) || !array_key_exists('repository', $this->configuration)) {
             // TODO: write to log
-            die();
+            die("wrong configuration");
         }
     }
 
     public function read_pending_queue() {
-        if (file_exists($this->configuration['queue_file'])) {
+        $result = false;
+        if (array_key_exists('queue_file', $this->configuration) && file_exists($this->configuration['queue_file'])) {
             $this->queue = json_decode(file_get_contents($this->configuration['queue_file']));
+            $result = true;
         }
+        return $result;
     }
 
     /** @param array $request by default, you will pass $_REQUEST */
@@ -102,7 +105,7 @@ class Github {
     }
 
     public function synchronize() {
-        foreach ($this->queue[] as $key => $value) {
+        foreach ($this->queue as $key => $value) {
             // TODO: correctly define success
             $success = true;
             $file = $this->get_file_from_github($url, $path);
