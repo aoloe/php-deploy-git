@@ -4,6 +4,172 @@
 
 namespace Aoloe\Deploy;
 
+class Github {
+    private $configuration = null;
+    private $configuration_default = array (
+        // 'username' : '',
+        // 'repository' : '',
+        'secret' => '', // password_hash('secret string');
+        'branch' => 'master', // only commits to this branch will be retained
+        /*
+         * repository_base_path is the base path from the Git repository:
+         * all changes to files that are not under this path are ignored.
+         * The path is removed from the deployment targets.
+         *
+         * If you set it to `content`, only the files under the `content/` directory will be considered and
+         * the file `content/test/test_file.md` will be deployed as `test/test_file.md`.
+         */
+        'repository_base_path' => '', // path to be removed from the filename
+        'deployment_base_path' => '', // path to be prefixed to the filename
+        'queue_file' => 'queue.json', // list of the commits
+        'log_file' => 'log.txt', // list of the commits
+        'ignore' => array (),
+    );
+    private $payload = array();
+    private $queue = array();
+
+    /** @param array $config it must be an array */
+    public function set_configuration($config) {
+        if (is_array($config)) {
+            $this->configuration = $config + $this->configuration_default; // TODO: check the order
+        }
+        if (is_null($this->configuration) || !array_key_exists('username', $this->configuration) || !array_key_exists('repository', $this->configuration)) {
+            // TODO: write to log
+            die();
+        }
+    }
+
+    public function read_pending_queue() {
+        if (file_exists($this->configuration['queue_file'])) {
+            $this->queue = json_decode(file_get_contents($this->configuration['queue_file']));
+        }
+    }
+
+    /** @param array $request by default, you will pass $_REQUEST */
+    public function set_payload_from_request($request) {
+        if (array_key_exists('payload', $request)) {
+            $payload = $request['payload'];
+            if (get_magic_quotes_gpc()) {
+                $payload = str_replace('\"', '"', $payload);
+            }
+            // file_put_contents('latest', $request['payload']);
+            $this->payload = json_decode($request['payload'], true);
+        }
+        // TODO: check if username, repository, and branch are the same as defined in the configuration
+        // if not, log the incident and die.
+    }
+
+    public function is_valid_request() {
+        // TODO: check if username, repository and branch in config and payload match
+        return $this->get_user_from_payload() === $this->configuration['username'] &&
+            $this->get_repository_from_payload() === $this->configuration['repository'] &&
+            $this->get_branch_from_payload() === $this->config['branch'];
+    }
+
+    /**
+     * add each added, modified or removed file from the payload to the queue.
+     * if the file is already in the queue override the preview action.
+     */
+    public function add_payload_to_queue() {
+        foreach ($this->payload['commits'] as $item) {
+            foreach (array_merge($item['added'] + $item['modified']) as $iitem) {
+                // TODO: make sure that iitem cannot be pointing outside of the target basepath
+                if (!array_key_exists($iitem, $this->queue)) {
+                    $this->queue[] = array (
+                        'author' => $item['author']['name'],
+                        'message' => $item['message'],
+                        'action' => 'download',
+                        'file' => $iitem,
+                    );
+                } else {
+                    $this->queue[$iitem]['action'] = 'download';
+                }
+            }
+            foreach ($item['removed'] as $iitem) {
+                // TODO: make sure that iitem cannot be pointing outside of the target basepath
+                if (!array_key_exists($iitem, $this->queue)) {
+                    $this->queue[] = array (
+                        'author' => $item['author']['name'],
+                        'message' => $item['message'],
+                        'action' => 'remove',
+                        'file' => $iitem,
+                    );
+                } else {
+                    $this->queue[$iitem]['action'] = 'download';
+                }
+            }
+        }
+    }
+
+    public function synchronize() {
+        foreach ($this->queue[] as $key => $value) {
+            // TODO: correctly define success
+            $success = true;
+            $file = $this->get_file_from_github($url, $path);
+            if ($success) {
+                unset($this->queue[$key]);
+                // TODO: store the current queue
+            }
+        }
+    }
+
+    private function download_file_from_github($url, $path) {
+        // TODO: ensure that the target path exists (or that it will be created)
+    }
+
+    private function delete_file($path) {
+        // TODO: what appens if one tries to unlink a file that does not exist (anymore)?
+        // TODO: ensure that empty paths are removed
+    }
+
+    private function get_user_from_payload() {
+        return(current(explode('/', $this->payload['repository']['full_name'])));
+    }
+
+    private function get_repository_from_payload() {
+        return(current(array_slice(explode('/', $this->payload['repository']['full_name']), 1, 1)));
+    }
+
+    private function get_branch_from_payload() {
+        return array_key_exists('ref', $this->payload) ? current(array_slice(explode('/', $this->payload['ref']), 2, 1)) : '';
+    }
+
+    private function get_raw_url_for_github($user, $repository, $branch = null) {
+        return strtr(
+            'https://raw.githubusercontent.com/$user/$repository/$branch/',
+            array(
+                '$user' => $user,
+                '$repository' => $repository,
+                '$branch' => isset($branch) ? $branch : 'master',
+            )
+        );
+    }
+
+    private function get_url_content($url) {
+        $result = '';
+        // echo('<pre>url: '.print_r($url, 1).'</pre>');
+        // $this->log[] = '>> '.$url;
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'aoloe/git-diploy');
+        // curl_setopt($ch, CURLOPT_HEADER, true);
+        // curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
+        $result = curl_exec($ch);
+        $info = curl_getinfo($ch);
+        if (($info['http_code'] == '404') || ($info['http_code'] == '403')) {
+            $result = '';
+        }
+        curl_close($ch);
+        // echo('<pre>result: '.print_r($result, 1).'</pre>');
+        return $result;
+    }
+}
+
 /**
  * Simple PHP tool listening to the Github webhooks and keeping the
  * files in sync between a website and  the corresponding Github repository
@@ -20,7 +186,7 @@ namespace Aoloe\Deploy;
  *   run them. if it fails (time out?) it does not remove the tasks and a cron job could retry them, one task
  *   after the other.
  */
-class GitHub {
+class GitHub_old {
 
     private $payload = null;
 
