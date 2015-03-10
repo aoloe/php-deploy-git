@@ -39,11 +39,19 @@ class Github {
         }
     }
 
-    public function read_pending_queue() {
+    public function read_queue_from_file() {
         $result = false;
-        if (array_key_exists('queue_file', $this->configuration) && file_exists($this->configuration['queue_file'])) {
-            $this->queue = json_decode(file_get_contents($this->configuration['queue_file']));
+        if (is_array($this->configuration) && array_key_exists('queue_file', $this->configuration) && file_exists($this->configuration['queue_file'])) {
+            $this->queue = json_decode(file_get_contents($this->configuration['queue_file']), true);
             $result = true;
+        }
+        return $result;
+    }
+
+    public function write_queue_to_file() {
+        $result = false;
+        if (is_array($this->configuration) && array_key_exists('queue_file', $this->configuration) && (!file_exists($this->configuration['queue_file']) || is_writable($this->configuration['queue_file']))) {
+            $result = file_put_contents($this->configuration['queue_file'], json_encode($this->queue));
         }
         return $result;
     }
@@ -66,7 +74,7 @@ class Github {
         // TODO: check if username, repository and branch in config and payload match
         return $this->get_user_from_payload() === $this->configuration['username'] &&
             $this->get_repository_from_payload() === $this->configuration['repository'] &&
-            $this->get_branch_from_payload() === $this->config['branch'];
+            $this->get_branch_from_payload() === $this->configuration['branch'];
     }
 
     /**
@@ -104,6 +112,10 @@ class Github {
         }
     }
 
+    private function pull_commit_from_queue() {
+        return array_shift($this->queue);
+    }
+
     public function synchronize() {
         foreach ($this->queue as $key => $value) {
             // TODO: correctly define success
@@ -135,6 +147,14 @@ class Github {
 
     private function get_branch_from_payload() {
         return array_key_exists('ref', $this->payload) ? current(array_slice(explode('/', $this->payload['ref']), 2, 1)) : '';
+    }
+
+    private function get_filename_sanitized($filename) {
+        $result = preg_replace("([\.]{2,})", '.', $filename);
+            
+
+        $result = preg_replace("([^\w\s\déèëêÉÈËÊáàäâåÁÀÄÂÅóòöôÓÒÖÔíìïîÍÌÏÎúùüûÚÙÜÛýÿÝøØœŒÆçÇ\+\-_~,;:\[\]\(\]\/.])", '', $result);
+        return $result;
     }
 
     private function get_raw_url_for_github($user, $repository, $branch = null) {

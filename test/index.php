@@ -10,18 +10,19 @@ include('../src/GitHub.php');
 $test = new Aoloe\Test();
 
 $configuration_minimal = array (
-    'username' => 'aoloe_test',
+    'username' => 'aoloe',
     'repository' => 'repository_test',
+    'branch' => 'master',
 );
 
-/*
 $payload_base = array (
     'repository' => array (
-        'full_name' => 'aoloe/htdocs-test',
+        'full_name' => 'aoloe/repository_test',
     ),
     'ref' => 'refs/heads/master',
     'commit' => array(),
 );
+/*
 $commit_base = array (
     'author' => array (
         'name' => 'ale',
@@ -39,35 +40,70 @@ $test->assert_identical('GitHub class loaded', class_exists('Aoloe\Deploy\GitHub
 $deploy = new Aoloe\Deploy\GitHub();
 $test->assert_identical('deploy object created', is_a($deploy, 'Aoloe\Deploy\GitHub'), true);
 $test->stop();
+unset($deploy);
 
 $test->start("Read the pending queue");
 $deploy = new Aoloe\Deploy\GitHub();
-$test->assert_false("no file read if no queue file defined", $deploy->read_pending_queue());
+$test->assert_false("no file read if no queue file defined", $deploy->read_queue_from_file());
 $deploy->set_configuration($configuration_minimal + array('queue_file' => 'queue_not_exists.json'));
-$test->assert_false("no file read if wrong queue file defined", $deploy->read_pending_queue());
+$test->assert_false("no file read if wrong queue file defined", $deploy->read_queue_from_file());
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'queue_empty.json'));
+$deploy->read_queue_from_file();
+$test->assert_identical("read empty queue gives empty queue", $test->access_property($deploy, 'queue'), array());
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'queue_one_add.json'));
+$deploy->read_queue_from_file();
+$test->assert_identical("read queue with one download", $test->access_property($deploy, 'queue'), array(array("author" => "ale", "message" => "test commit", "action" => "download", "file" => "test.txt")));
+unset($deploy);
+        
 
 $test->start('Read the request\'s basic information');
-$github = new Aoloe\Deploy\GitHub();
-$github->read(array('payload' => json_encode($payload_base)));
-$test->assert_identical('read user from simple request', $test->call_method($github, 'get_user'), 'aoloe');
-$test->assert_identical('read repository  simple request', $test->call_method($github, 'get_repository'), 'htdocs-test');
-$test->assert_identical('read branch from simple request', $test->call_method($github, 'get_branch'), 'master');
-$test->assert_true('is simple request valid', $github->is_valid('aoloe', 'htdocs-test'), true);
+$deploy = new Aoloe\Deploy\GitHub();
+$deploy->set_configuration($configuration_minimal);
+$deploy->set_payload_from_request(array('payload' => json_encode($payload_base)));
+$test->assert_identical('read user from simple request', $test->call_method($deploy, 'get_user_from_payload'), 'aoloe');
+$test->assert_identical('read repository  simple request', $test->call_method($deploy, 'get_repository_from_payload'), 'repository_test');
+$test->assert_identical('read branch from simple request', $test->call_method($deploy, 'get_branch_from_payload'), 'master');
+$test->assert_true('is simple request valid', $deploy->is_valid_request());
+unset($deploy);
 $test->stop();
 
-$test->start('Read request adding content/test.txt');
-$github = new Aoloe\Deploy\GitHub();
+$test->start('Filename sanitization');
+$deploy = new Aoloe\Deploy\GitHub();
+$test->assert_identical('filename sanitized matches', $test->call_method($deploy, 'get_filename_sanitized', 'test.txt'), 'test.txt');
+$test->assert_identical('filename sanitized removes ..', $test->call_method($deploy, 'get_filename_sanitized', 'test..txt'), 'test.txt');
+$test->assert_identical('filename sanitized keeps /-_', $test->call_method($deploy, 'get_filename_sanitized', 'content/test_abc-def.txt'), 'content/test_abc-def.txt');
+$test->assert_identical('filename sanitized keeps numbers', $test->call_method($deploy, 'get_filename_sanitized', 'content/test_0123.txt'), 'content/test_0123.txt');
+$test->assert_identical('filename keeps common "accented" characters', $test->call_method($deploy, 'get_filename_sanitized', 'éàèöäüçÄÉÒ.txt'), 'éàèöäüçÄÉÒ.txt');
+$test->assert_identical('filename refuses encoded unicode characters', $test->call_method($deploy, 'get_filename_sanitized', "Pr\u00eat-\u00e0-porter.txt"), 'Pru00eat-u00e0-porter.txt');
+unset($deploy);
+$test->stop();
+
+$test->start('Read request adding content/test3.txt');
+$deploy = new Aoloe\Deploy\GitHub();
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
 $request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
 // echo("<pre>request:\n".print_r($request, 1)."</pre>");
-$github->read($request);
-$test->assert_identical('filename sanitized matches', $test->call_method($github, 'get_filename_sanitized', 'test.txt'), 'test.txt');
-$test->assert_identical('filename sanitized removes ..', $test->call_method($github, 'get_filename_sanitized', 'test..txt'), 'test.txt');
-$test->assert_identical('filename sanitized keeps /-_', $test->call_method($github, 'get_filename_sanitized', 'content/test_abc-def.txt'), 'content/test_abc-def.txt');
-$test->assert_identical('filename keeps common "accented" characters', $test->call_method($github, 'get_filename_sanitized', 'éàèöäüçÄÉÒ.txt'), 'éàèöäüçÄÉÒ.txt');
-$test->assert_identical('filename refuses encoded unicode characters', $test->call_method($github, 'get_filename_sanitized', "Pr\u00eat-\u00e0-porter.txt"), 'Pru00eat-u00e0-porter.txt');
-$test->assert_identical('files to get', $test->call_method($github, 'get_files_to_get'), array('content/test3.txt'));
-$test->assert_identical('files to delete', $test->call_method($github, 'get_files_to_delete'), array());
-$test->assert_identical('commit descriptions', $test->call_method($github, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
+$deploy->set_payload_from_request($request);
+$deploy->add_payload_to_queue();
+$test->assert_identical("read queue with one download", $test->access_property($deploy, 'queue'), array(array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt")));
+$deploy->write_queue_to_file();
+$test->assert_identical("write queue to file", file_get_contents('data/queue_from_test.json'), '[{"author":"ale rimoldi","message":"Create test3.txt","action":"download","file":"content\/test3.txt"}]');
+$test->assert_identical("pull commit from queue", $test->call_method($deploy, 'pull_commit_from_queue'), array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt"));
+$test->assert_identical("after pull, queue is empty", $test->access_property($deploy, 'queue'), array());
+$deploy->write_queue_to_file();
+$test->assert_identical("queue file is an empty array after writing", file_get_contents('data/queue_from_test.json'), '[]');
+unlink('data/queue_from_test.json');
+
+$test->start('get content/test3.txt');
+$deploy = new Aoloe\Deploy\GitHub();
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
+$request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
+
+
+$test->assert_identical('files to get', $test->call_method($deploy, 'get_files_to_get'), array('content/test3.txt'));
+$test->assert_identical('files to delete', $test->call_method($deploy, 'get_files_to_delete'), array());
+$test->assert_identical('commit descriptions', $test->call_method($deploy, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
+unset($deploy);
 $test->stop();
 
 $test->start('Add and remove the files');
