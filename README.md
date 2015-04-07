@@ -22,6 +22,7 @@ The deployment path can be tweaked by defining both a repository and a deploymen
 # Notes
 
 - Some inspiration from https://github.com/lkwdwrd/git-deploy
+- have a look at <https://github.com/PeerJ/paper-now>
 
 # Todo
 
