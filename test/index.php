@@ -96,10 +96,11 @@ unlink('data/queue_from_test.json');
 
 $test->start('get content/test3.txt');
 $deploy = new Aoloe\Deploy\GitHub();
-$deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
-$request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
-
-
+$deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_with_text3_to_add.json'));
+$deploy->read_queue_from_file();
+$test->assert_identical("queue with one download from test file", $test->access_property($deploy, 'queue'), array(array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt")));
+// $request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
+// $deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
 $test->assert_identical('files to get', $test->call_method($deploy, 'get_files_to_get'), array('content/test3.txt'));
 $test->assert_identical('files to delete', $test->call_method($deploy, 'get_files_to_delete'), array());
 $test->assert_identical('commit descriptions', $test->call_method($deploy, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
