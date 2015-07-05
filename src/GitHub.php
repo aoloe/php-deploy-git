@@ -2,7 +2,15 @@
 // error_reporting(E_ALL);
 // ini_set('display_errors', '1');
 
+
 namespace Aoloe\Deploy;
+
+// remove this and correctly add the debug tool
+if (!method_exists('debug')) {
+    function debug($label, $value) {
+        echo("<pre>$label:\n".print_r($value, 1)."</pre>");
+    }
+}
 
 class Github {
     private $configuration = null;
@@ -42,6 +50,7 @@ class Github {
     public function read_queue_from_file() {
         $result = false;
         if (is_array($this->configuration) && array_key_exists('queue_file', $this->configuration) && file_exists($this->configuration['queue_file'])) {
+            // debug('queue file', file_get_contents($this->configuration['queue_file']));
             $this->queue = json_decode(file_get_contents($this->configuration['queue_file']), true);
             $result = true;
         }
@@ -106,7 +115,7 @@ class Github {
                         'file' => $iitem,
                     );
                 } else {
-                    $this->queue[$iitem]['action'] = 'download';
+                    $this->queue[$iitem]['action'] = 'remove';
                 }
             }
         }
