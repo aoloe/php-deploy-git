@@ -81,7 +81,7 @@ $test->stop();
 $test->start('Read request adding content/test3.txt');
 $deploy = new Aoloe\Deploy\GitHub();
 $deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
-$request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
+$request = array('payload' => str_replace('\"', '"', file_get_contents('data/github_request_add_test3.json')));
 // echo("<pre>request:\n".print_r($request, 1)."</pre>");
 $deploy->set_payload_from_request($request);
 $deploy->add_payload_to_queue();
