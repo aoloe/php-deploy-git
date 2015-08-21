@@ -129,6 +129,10 @@ class Github {
         foreach ($this->queue as $key => $value) {
             // TODO: correctly define success
             $success = true;
+            if ($value['action'] === 'download') {
+                // TODO: download the file
+                // TODO: store the content a the right place
+            }
             $file = $this->get_file_from_github($url, $path);
             if ($success) {
                 unset($this->queue[$key]);
