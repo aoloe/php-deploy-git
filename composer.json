@@ -8,6 +8,10 @@
         {
             "type": "vcs",
             "url":  "git@github.com:aoloe/php-documentation.git"
+        },
+        {
+            "type": "vcs",
+            "url":  "git@github.com:aoloe/php-php.git"
         }
     ],
     "type": "library",
@@ -31,7 +35,8 @@
     },
     "require-dev": {
         "aoloe/php-test" : "dev-master",
-        "aoloe/php-documentation" : "dev-master"
+        "aoloe/php-documentation" : "dev-master",
+        "aoloe/php-php" : "dev-master"
     },
     "autoload": {
         "psr-4": {
