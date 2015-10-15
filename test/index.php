@@ -94,14 +94,22 @@ $deploy->write_queue_to_file();
 $test->assert_identical("queue file is an empty array after writing", file_get_contents('data/queue_from_test.json'), '[]');
 unlink('data/queue_from_test.json');
 
+$test->start('get file from github');
+$test->assert_identical('get raw url', $test->call_method($deploy, 'get_raw_url_for_github', $configuration_minimal['username'], $configuration_minimal['repository'], $configuration_minimal['branch']), 'https://raw.githubusercontent.com/aoloe/repository_test/master/');
+$url_base = $test->call_method($deploy, 'get_raw_url_for_github', $configuration_minimal['username'], 'scribus-newsletter');
+$test->assert_false('get newsletter README', $test->call_method($deploy, 'get_url_content', $url_base.'README.md') == '');
+$test->stop();
+
 $test->start('get content/test3.txt');
 $deploy = new Aoloe\Deploy\GitHub();
 $deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_with_text3_to_add.json'));
 $deploy->read_queue_from_file();
 $test->assert_identical("queue with one download from test file", $test->access_property($deploy, 'queue'), array(array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt")));
-// $request = array('payload' => str_replace('\"', '"', file_get_contents('github_request_add_test3.json')));
-// $deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/queue_from_test.json'));
-$test->assert_identical('files to get', $test->call_method($deploy, 'get_files_to_get'), array('content/test3.txt'));
+$test->assert_identical('pull commit', $test->call_method($deploy, 'pull_commit_from_queue'), array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt"));
+
+$test->assert_identical('empty pull commit on empty queue', $test->call_method($deploy, 'pull_commit_from_queue'), null);
+
+
 $test->assert_identical('files to delete', $test->call_method($deploy, 'get_files_to_delete'), array());
 $test->assert_identical('commit descriptions', $test->call_method($deploy, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
 unset($deploy);

@@ -2,11 +2,12 @@
 // error_reporting(E_ALL);
 // ini_set('display_errors', '1');
 
+use function Aoloe\Php\startsWith as startsWith;
 
 namespace Aoloe\Deploy;
 
 // remove this and correctly add the debug tool
-if (!method_exists('debug')) {
+if (!function_exists('debug')) {
     function debug($label, $value) {
         echo("<pre>$label:\n".print_r($value, 1)."</pre>");
     }
@@ -17,8 +18,8 @@ class Github {
     private $configuration_default = array (
         // 'username' => '',
         // 'repository' => '',
-        'secret' => '', // password_hash('secret string');
         'branch' => 'master', // only commits to this branch will be retained
+        'secret' => '', // password_hash('secret string');
         /*
          * repository_base_path is the base path from the Git repository:
          * all changes to files that are not under this path are ignored.
@@ -121,28 +122,47 @@ class Github {
         }
     }
 
-    private function pull_commit_from_queue() {
-        return array_shift($this->queue);
-    }
-
     public function synchronize() {
+        while ($commit = $this->pull_commit_from_queue()) {
+            if (!empty($this->configuration['repository_base_path']) && !startsWith($value['file'], $this->configuration['repository_base_path'])) {
+                continue; // ignore files that are outside of repository_base_path
+            }
+            if ($value['action'] === 'download') {
+                if (!$this->download_file_from_github($value['file'])) {
+                    return false;
+                }
+            }
+        }
+        /*
         foreach ($this->queue as $key => $value) {
             // TODO: correctly define success
-            $success = true;
-            if ($value['action'] === 'download') {
-                // TODO: download the file
-                // TODO: store the content a the right place
-            }
             $file = $this->get_file_from_github($url, $path);
             if ($success) {
                 unset($this->queue[$key]);
                 // TODO: store the current queue
             }
         }
+        */
+        return true;
     }
 
-    private function download_file_from_github($url, $path) {
+    private function pull_commit_from_queue() {
+        return array_shift($this->queue);
+    }
+
+    private function download_file_from_github($path) {
+        $result = true;
         // TODO: ensure that the target path exists (or that it will be created)
+        // TODO: if file in $configuration['repository_base_path']
+        $url = get_raw_url_for_github($this->configuration['username'], $this->configuration['repository'], $this->configuration['branch']);
+        $content = $this->get_url_content($url.$value['file']);
+        if ($content == '')  { // TODO: or === false?
+            $result = false;
+        } else {
+            // TODO: store the content in the file
+            // TODO: respect $configuration['deployment_base_path']
+        }
+        return $result;
     }
 
     private function delete_file($path) {
