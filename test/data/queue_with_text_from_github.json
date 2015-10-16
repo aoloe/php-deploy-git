@@ -1,0 +1,8 @@
+[
+    {
+        "author" : "ale rimoldi",
+        "message" : "Create test.txt",
+        "action" : "download",
+        "file" : "test/data/test.txt"
+    }
+]
