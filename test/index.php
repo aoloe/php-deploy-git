@@ -18,7 +18,7 @@ $configuration_minimal = array (
 $configuration_github = array (
     'username' => 'aoloe',
     'repository' => 'php-deploy-git',
-    'branch' => 'queue', // TODO: change it to master when merging
+    'branch' => 'master',
     'repository_base_path' => 'test/data/',
     'deployment_base_path' => 'data/download/',
 );

@@ -136,7 +136,7 @@ class Github {
             }
             if ($commit['action'] === 'download') {
                 if (!$this->download_file_from_github($commit['file'])) {
-                    debug('could not download the file', $commit['file']);
+                    \Aoloe\debug('could not download the file', $commit['file']);
                     // TODO: log the failed download
                     return false;
                 }
