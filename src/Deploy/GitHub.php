@@ -9,8 +9,10 @@
 
 namespace Aoloe\Deploy;
 
-use function \Aoloe\Php\startsWith as startsWith;
-use function \Aoloe\debug as debug;
+new \Aoloe\Php\String();
+// use function \Aoloe\Php\startsWith as startsWith;
+new \Aoloe\Debug();
+// use function \Aoloe\debug as debug;
 
 // new \Aoloe\Debug(); // force import
 
@@ -128,7 +130,7 @@ class Github {
     public function synchronize() {
         while ($commit = $this->pull_commit_from_queue()) {
             // \Aoloe\debug('commit', $commit);
-            if (!empty($this->configuration['repository_base_path']) && !startsWith($commit['file'], $this->configuration['repository_base_path'])) {
+            if (!empty($this->configuration['repository_base_path']) && !\Aoloe\Php\startsWith($commit['file'], $this->configuration['repository_base_path'])) {
                 // ignore files that are outside of repository_base_path
                 continue;
             }

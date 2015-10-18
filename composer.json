@@ -46,10 +46,6 @@
     "autoload": {
         "psr-4": {
             "Aoloe\\": "src"
-        },
-        "files" : [
-            "vendor/aoloe/php-debug/src/Debug.php",
-            "vendor/aoloe/php-php/src/Php/String.php"
-        ]
+        }
     }
 }

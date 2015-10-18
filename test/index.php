@@ -5,7 +5,7 @@
  */
 
 include('../vendor/autoload.php');
-include('../src/GitHub.php');
+include('../src/Deploy/GitHub.php');
 
 $test = new Aoloe\Test();
 
