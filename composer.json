@@ -11,6 +11,10 @@
         },
         {
             "type": "vcs",
+            "url":  "git@github.com:aoloe/php-debug.git"
+        },
+        {
+            "type": "vcs",
             "url":  "git@github.com:aoloe/php-php.git"
         }
     ],
@@ -31,16 +35,21 @@
         }
     ],
     "require": {
-        "php": ">=5.3.0"
+        "php": ">=5.3.0",
+        "aoloe/php-php" : "dev-master"
     },
     "require-dev": {
+        "aoloe/php-debug" : "dev-master",
         "aoloe/php-test" : "dev-master",
-        "aoloe/php-documentation" : "dev-master",
-        "aoloe/php-php" : "dev-master"
+        "aoloe/php-documentation" : "dev-master"
     },
     "autoload": {
         "psr-4": {
             "Aoloe\\": "src"
-        }
+        },
+        "files" : [
+            "vendor/aoloe/php-debug/src/Debug.php",
+            "vendor/aoloe/php-php/src/Php/String.php"
+        ]
     }
 }

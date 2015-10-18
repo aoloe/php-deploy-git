@@ -15,12 +15,20 @@ $configuration_minimal = array (
     'branch' => 'master',
 );
 
+$configuration_github = array (
+    'username' => 'aoloe',
+    'repository' => 'php-deploy-git',
+    'branch' => 'queue', // TODO: change it to master when merging
+    'repository_base_path' => 'test/data/',
+    'deployment_base_path' => 'data/download/',
+);
+
 $payload_base = array (
     'repository' => array (
         'full_name' => 'aoloe/repository_test',
     ),
     'ref' => 'refs/heads/master',
-    'commit' => array(),
+    'commits' => array(),
 );
 /*
 $commit_base = array (
@@ -106,14 +114,37 @@ $deploy->set_configuration($configuration_minimal + array('queue_file' => 'data/
 $deploy->read_queue_from_file();
 $test->assert_identical("queue with one download from test file", $test->access_property($deploy, 'queue'), array(array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt")));
 $test->assert_identical('pull commit', $test->call_method($deploy, 'pull_commit_from_queue'), array("author" => "ale rimoldi", "message" => "Create test3.txt", "action" => "download", "file" => "content/test3.txt"));
-
 $test->assert_identical('empty pull commit on empty queue', $test->call_method($deploy, 'pull_commit_from_queue'), null);
 
-
-$test->assert_identical('files to delete', $test->call_method($deploy, 'get_files_to_delete'), array());
-$test->assert_identical('commit descriptions', $test->call_method($deploy, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
 unset($deploy);
 $test->stop();
+
+$test->start('synchronise with github');
+$deploy = new Aoloe\Deploy\GitHub();
+$configuration = $configuration_github + array('queue_file' => 'data/queue_with_text_from_github.json');
+$deploy->set_configuration($configuration);
+// Aoloe\debug('configuration', $configuration);
+$deploy->read_queue_from_file() || debug('could not read the queue file');
+$queue = $test->access_property($deploy, 'queue');
+// Aoloe\debug('queue', $queue);
+$target_file = $test->call_method($deploy, 'get_deployment_path', $queue[0]['file']);
+$test->assert_false('tear up ensures that test.txt does not exist', file_exists($target_file));
+$deploy->synchronize();
+$test->assert_true('test.txt has been downloaded', file_exists($target_file));
+!empty($target_file) && unlink($target_file);
+$test->assert_false('tear down ensures that test.txt been deleted', file_exists($target_file));
+// create a config file that gets a file inside of php-deploy-git/test/data
+unset($deploy);
+$test->stop();
+
+
+die();
+
+
+/*
+$test->assert_identical('files to delete', $test->call_method($deploy, 'get_files_to_delete'), array());
+$test->assert_identical('commit descriptions', $test->call_method($deploy, 'get_commit_description'), json_decode('["06.09.2014 13:06, ale rimoldi: Create test3.txt"]'));
+*/
 
 $test->start('Add and remove the files');
 $filename = 'content/test2.md';

@@ -1,17 +1,18 @@
 <?php
+/**
+ * TODO: move most of the private functions to own files
+ */
 // error_reporting(E_ALL);
 // ini_set('display_errors', '1');
 
-use function Aoloe\Php\startsWith as startsWith;
+
 
 namespace Aoloe\Deploy;
 
-// remove this and correctly add the debug tool
-if (!function_exists('debug')) {
-    function debug($label, $value) {
-        echo("<pre>$label:\n".print_r($value, 1)."</pre>");
-    }
-}
+use function \Aoloe\Php\startsWith as startsWith;
+use function \Aoloe\debug as debug;
+
+// new \Aoloe\Debug(); // force import
 
 class Github {
     private $configuration = null;
@@ -80,8 +81,10 @@ class Github {
         // if not, log the incident and die.
     }
 
+    /**
+     * check if username, repository and branch in config and payload match
+     */
     public function is_valid_request() {
-        // TODO: check if username, repository and branch in config and payload match
         return $this->get_user_from_payload() === $this->configuration['username'] &&
             $this->get_repository_from_payload() === $this->configuration['repository'] &&
             $this->get_branch_from_payload() === $this->configuration['branch'];
@@ -124,25 +127,21 @@ class Github {
 
     public function synchronize() {
         while ($commit = $this->pull_commit_from_queue()) {
-            if (!empty($this->configuration['repository_base_path']) && !startsWith($value['file'], $this->configuration['repository_base_path'])) {
-                continue; // ignore files that are outside of repository_base_path
+            // \Aoloe\debug('commit', $commit);
+            if (!empty($this->configuration['repository_base_path']) && !startsWith($commit['file'], $this->configuration['repository_base_path'])) {
+                // ignore files that are outside of repository_base_path
+                continue;
             }
-            if ($value['action'] === 'download') {
-                if (!$this->download_file_from_github($value['file'])) {
+            if ($commit['action'] === 'download') {
+                if (!$this->download_file_from_github($commit['file'])) {
+                    debug('could not download the file', $commit['file']);
+                    // TODO: log the failed download
                     return false;
                 }
+            } elseif ($commit['action'] === 'download') {
+                $this->delete_file($path);
             }
         }
-        /*
-        foreach ($this->queue as $key => $value) {
-            // TODO: correctly define success
-            $file = $this->get_file_from_github($url, $path);
-            if ($success) {
-                unset($this->queue[$key]);
-                // TODO: store the current queue
-            }
-        }
-        */
         return true;
     }
 
@@ -153,21 +152,33 @@ class Github {
     private function download_file_from_github($path) {
         $result = true;
         // TODO: ensure that the target path exists (or that it will be created)
-        // TODO: if file in $configuration['repository_base_path']
-        $url = get_raw_url_for_github($this->configuration['username'], $this->configuration['repository'], $this->configuration['branch']);
-        $content = $this->get_url_content($url.$value['file']);
-        if ($content == '')  { // TODO: or === false?
+        $url = $this->get_raw_url_for_github($this->configuration['username'], $this->configuration['repository'], $this->configuration['branch']);
+        $content = $this->get_url_content($url.$path);
+        if ($content === false)  {
             $result = false;
         } else {
-            // TODO: store the content in the file
-            // TODO: respect $configuration['deployment_base_path']
+            // debug('content', $content);
+            $deployment_path = $this->get_deployment_path($path);
+            file_put_contents($deployment_path, $content);
         }
         return $result;
     }
 
+    private function get_deployment_path($path) {
+        $result = $path;
+        if (!empty($this->configuration['repository_base_path'])) {
+            $result = substr($result, strlen($this->configuration['repository_base_path']));
+        }
+        $result = $this->configuration['deployment_base_path'].$result;
+        return $result;
+    }
+
     private function delete_file($path) {
+        // TODO: how to make sure that somebody cannot remove random files? is the secret enough?
         // TODO: what appens if one tries to unlink a file that does not exist (anymore)?
-        // TODO: ensure that empty paths are removed
+        // TODO: ensure that empty paths get removed
+        $deployment_path = $this->get_deployment_path($path);
+        unlink($path);
     }
 
     private function get_user_from_payload() {
@@ -217,8 +228,9 @@ class Github {
         curl_setopt($ch, CURLOPT_VERBOSE, true);
         $result = curl_exec($ch);
         $info = curl_getinfo($ch);
+        // \Aoloe\debug('info', $info);
         if (($info['http_code'] == '404') || ($info['http_code'] == '403')) {
-            $result = '';
+            $result = false;
         }
         curl_close($ch);
         // echo('<pre>result: '.print_r($result, 1).'</pre>');
