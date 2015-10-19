@@ -5,8 +5,6 @@
 // error_reporting(E_ALL);
 // ini_set('display_errors', '1');
 
-
-
 namespace Aoloe\Deploy;
 
 new \Aoloe\Php\String();
@@ -155,14 +153,28 @@ class Github {
     private function get_file_list() {
         $result = false;
 
+        $rate_limit = null;
         $sha = null;
         $tree = null;
-        $url = $this->get_url_for_github(
+        $url = 'https://api.github.com/rate_limit';
+        $content = $this->get_url_content($url);
+        if ($content !== false) {
+            $content = json_decode($content, true);
+        }
+        if ($content !== false) {
+            $rate_limit = $content['rate']['remaining'];
+        }
+        \Aoloe\debug('rate_limit', $rate_limit);
+        if (is_null($rate_limit) || $rate_limit <= 0) {
+            return false;
+        }
+        $url = strtr(
             'https://api.github.com/repos/:user/:repository/git/trees/:branch',
-            $this->configuration['user'],
-            $this->configuration['repository'],
-            $this->configuration['branch']
-
+            array (
+                ':user' => $this->configuration['username'],
+                ':repository' => $this->configuration['repository'],
+                ':branch' => $this->configuration['branch']
+            )
         );
         $content = $this->get_url_content($url);
         if ($content !== false) {
@@ -175,14 +187,17 @@ class Github {
             return false;
         }
 
-        $url = $this->get_url_for_github(
-            'https://api.github.com/repos/:user/:repository/git/trees/:sha?recursive=1'
-            $this->configuration['user'],
-            $this->configuration['repository'],
-            $this->configuration['branch']
-
+        $url = strtr(
+            'https://api.github.com/repos/:user/:repository/git/trees/:sha?recursive=1',
+            array (
+                ':user' => $this->configuration['username'],
+                ':repository' => $this->configuration['repository'],
+                ':sha' => $this->configuration['branch']
+            )
         );
+        // \Aoloe\debug('url', $url);
         $content = $this->get_url_content($url);
+        // \Aoloe\debug('content', $content);
         if ($content !== false) {
             $content = json_decode($content, true);
         }
@@ -190,8 +205,9 @@ class Github {
             $tree = $content['tree'];
         }
         $result = array();
+        // \Aoloe\debug('tree', $tree);
         foreach ($tree as $item) {
-            if (($tree['type'] == 'blob') && $this->is_file_in_repository_base_path($tree['path'])) {
+            if (($item['type'] == 'blob') && $this->is_file_in_repository_base_path($item['path'])) {
                 $result[] = $item['path'];
             }
         }
@@ -221,7 +237,7 @@ class Github {
     }
 
     private function is_file_in_repository_base_path($file) {
-        return (empty($this->configuration['repository_base_path']) || !\Aoloe\Php\startsWith($file, $this->configuration['repository_base_path']));
+        return (empty($this->configuration['repository_base_path']) || \Aoloe\Php\startsWith($file, $this->configuration['repository_base_path']));
     }
 
     private function pull_commit_from_queue() {
@@ -280,21 +296,15 @@ class Github {
         return $result;
     }
 
-    private function get_url_for_github($url, $user, $repository, $branch = null) {
+    private function get_raw_url_for_github($user, $repository, $branch = null) {
         return strtr(
-            $url,
-            array(
+            'https://raw.githubusercontent.com/:user/:repository/:branch/',
+            array (
                 ':user' => $user,
                 ':repository' => $repository,
-                ':branch' => isset($branch) ? $branch : 'master',
+                ':branch' => is_null($branch) ? 'master' : $branch
             )
         );
-    }
-
-    private function get_raw_url_for_github($user, $repository, $branch = null) {
-        $url = 'https://raw.githubusercontent.com/:user/:repository/:branch/';
-        return $this->get_url_from_template(
-            $url, $user, $repository, $branch);
     }
 
     private function get_url_content($url) {
@@ -546,11 +556,11 @@ class GitHub_old {
 
     private function get_raw_url($user, $repository, $branch = null) {
         return strtr(
-            'https://raw.githubusercontent.com/$user/$repository/$branch/',
+            'https://raw.githubusercontent.com/:user/:repository/:branch/',
             array(
-                '$user' => $user,
-                '$repository' => $repository,
-                '$branch' => isset($branch) ? $branch : 'master',
+                ':user' => $user,
+                ':repository' => $repository,
+                ':branch' => isset($branch) ? $branch : 'master',
             )
         );
     }

@@ -30,18 +30,6 @@ $payload_base = array (
     'ref' => 'refs/heads/master',
     'commits' => array(),
 );
-/*
-$commit_base = array (
-    'author' => array (
-        'name' => 'ale',
-    ),
-    'timestamp' => date('Y-m-d\TH:i:sT'),
-    'message' => '',
-    'added' => array(),
-    'modified' => array(),
-    'removed' => array(),
-);
-*/
 
 $test->start("Import the GitHub deploy source");
 $test->assert_identical('GitHub class loaded', class_exists('Aoloe\Deploy\GitHub'), true);
@@ -136,3 +124,11 @@ $test->assert_false('tear down ensures that test.txt been deleted', file_exists(
 // create a config file that gets a file inside of php-deploy-git/test/data
 unset($deploy);
 $test->stop();
+
+$test->start('synchronise with github');
+$deploy = new Aoloe\Deploy\GitHub();
+$configuration = $configuration_github;
+$deploy->set_configuration($configuration);
+$deploy->add_all_to_queue();
+$queue = $test->access_property($deploy, 'queue');
+// Aoloe\debug('queue', $queue);
