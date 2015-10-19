@@ -127,11 +127,84 @@ class Github {
         }
     }
 
+    /**
+     * add to the queue all the files in the repository
+     * (below reposytory_base_path)
+     */
+    public function add_all_to_queue() {
+        $result = true;
+        $tree = $this->get_file_list();
+        if (empty($tree)) {
+            return false;
+        }
+        $this->queue = array();
+        foreach ($tree as $item) {
+            $this->queue[] = array (
+                'author' => '',
+                'message' => '',
+                'action' => 'download',
+                'file' => $item,
+            );
+        }
+        return $result;
+    }
+
+    /**
+     * get the list of all the files in a repository
+     */
+    private function get_file_list() {
+        $result = false;
+
+        $sha = null;
+        $tree = null;
+        $url = $this->get_url_for_github(
+            'https://api.github.com/repos/:user/:repository/git/trees/:branch',
+            $this->configuration['user'],
+            $this->configuration['repository'],
+            $this->configuration['branch']
+
+        );
+        $content = $this->get_url_content($url);
+        if ($content !== false) {
+            $content = json_decode($content, true);
+        }
+        if ($content !== false) {
+            $sha = $content['sha'];
+        }
+        if (is_null($sha)) {
+            return false;
+        }
+
+        $url = $this->get_url_for_github(
+            'https://api.github.com/repos/:user/:repository/git/trees/:sha?recursive=1'
+            $this->configuration['user'],
+            $this->configuration['repository'],
+            $this->configuration['branch']
+
+        );
+        $content = $this->get_url_content($url);
+        if ($content !== false) {
+            $content = json_decode($content, true);
+        }
+        if ($content !== false) {
+            $tree = $content['tree'];
+        }
+        $result = array();
+        foreach ($tree as $item) {
+            if (($tree['type'] == 'blob') && $this->is_file_in_repository_base_path($tree['path'])) {
+                $result[] = $item['path'];
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * get/delete the files that are in the queue
+     */
     public function synchronize() {
         while ($commit = $this->pull_commit_from_queue()) {
             // \Aoloe\debug('commit', $commit);
-            if (!empty($this->configuration['repository_base_path']) && !\Aoloe\Php\startsWith($commit['file'], $this->configuration['repository_base_path'])) {
-                // ignore files that are outside of repository_base_path
+            if (!$this->is_file_in_repository_base_path($commit['file'])) {
                 continue;
             }
             if ($commit['action'] === 'download') {
@@ -145,6 +218,10 @@ class Github {
             }
         }
         return true;
+    }
+
+    private function is_file_in_repository_base_path($file) {
+        return (empty($this->configuration['repository_base_path']) || !\Aoloe\Php\startsWith($file, $this->configuration['repository_base_path']));
     }
 
     private function pull_commit_from_queue() {
@@ -203,15 +280,21 @@ class Github {
         return $result;
     }
 
-    private function get_raw_url_for_github($user, $repository, $branch = null) {
+    private function get_url_for_github($url, $user, $repository, $branch = null) {
         return strtr(
-            'https://raw.githubusercontent.com/$user/$repository/$branch/',
+            $url,
             array(
-                '$user' => $user,
-                '$repository' => $repository,
-                '$branch' => isset($branch) ? $branch : 'master',
+                ':user' => $user,
+                ':repository' => $repository,
+                ':branch' => isset($branch) ? $branch : 'master',
             )
         );
+    }
+
+    private function get_raw_url_for_github($user, $repository, $branch = null) {
+        $url = 'https://raw.githubusercontent.com/:user/:repository/:branch/';
+        return $this->get_url_from_template(
+            $url, $user, $repository, $branch);
     }
 
     private function get_url_content($url) {
@@ -224,7 +307,7 @@ class Github {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'aoloe/git-diploy');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'aoloe/deploy-git');
         // curl_setopt($ch, CURLOPT_HEADER, true);
         // curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
         curl_setopt($ch, CURLOPT_VERBOSE, true);
