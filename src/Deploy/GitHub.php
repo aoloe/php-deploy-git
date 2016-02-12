@@ -164,8 +164,9 @@ class Github {
         if ($content !== false) {
             $rate_limit = $content['rate']['remaining'];
         }
-        \Aoloe\debug('rate_limit', $rate_limit);
+        // \Aoloe\debug('rate_limit', $rate_limit);
         if (is_null($rate_limit) || $rate_limit <= 0) {
+            // TODO: log the error
             return false;
         }
         $url = strtr(
